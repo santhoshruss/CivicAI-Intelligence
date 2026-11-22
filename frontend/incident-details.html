@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incident Details – CivicAI</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .case-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    .image-overlay-wrapper {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      margin-top: 0.5rem;
+    }
+    .evidence-thumb {
+      display: block;
+      max-width: 100%;
+      max-height: 320px;
+      object-fit: cover;
+    }
+    .bounding-box-overlay {
+      position: absolute;
+      border: 2px solid #ef4444;
+      background: rgba(239, 68, 68, 0.2);
+      border-radius: 4px;
+      pointer-events: none;
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+    }
+    .bounding-box-label {
+      position: absolute;
+      top: -22px;
+      left: 0;
+      background: #ef4444;
+      color: #ffffff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+    .tool-log-item {
+      padding: 0.6rem 0.8rem;
+      border-left: 3px solid var(--primary);
+      background: #f8fafc;
+      margin-bottom: 0.5rem;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.85rem;
+    }
+    .tool-log-name {
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .sim-badge-high {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .sim-badge-med {
+      background: #fef3c7;
+      color: #92400e;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .sim-badge-low {
+      background: #f1f5f9;
+      color: #475569;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    @media (max-width: 900px) {
+      .case-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <h1 class="page-title" id="page-case-title">Incident Details</h1>
+        <div class="topbar-actions">
+          <button class="btn btn-secondary btn-sm" onclick="history.back()">← Back</button>
+          <button class="btn btn-primary btn-sm" id="btn-run-agent" onclick="runAgentTriage()">🤖 Run Agentic AI Triage</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <div class="case-grid">
+          <!-- Left Column: Incident Details & Evidence with Bounding Box -->
+          <div>
+            <div class="card" style="margin-bottom: 1.5rem;">
+              <div class="card-header">
+                <h3>Incident Information</h3>
+                <span id="case-status-badge"></span>
+              </div>
+              <div style="font-size: 0.9rem; line-height: 1.8;">
+                <div><strong>Reference #:</strong> <span id="case-ref">-</span></div>
+                <div><strong>Category:</strong> <span id="case-category">-</span></div>
+                <div><strong>Language:</strong> <span id="case-lang" class="badge" style="background:#e0e7ff; color:#3730a3;">English</span></div>
+                <div><strong>Reported By:</strong> <span id="case-reporter">-</span></div>
+                <div><strong>Location:</strong> <span id="case-address">-</span></div>
+                <div><strong>GPS Coordinates:</strong> <span id="case-coords">-</span></div>
+                <div><strong>Official Priority:</strong> <span id="case-priority">-</span> <button class="btn btn-secondary btn-sm" style="margin-left: 0.5rem; padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="openPriorityModal()">Override Priority</button></div>
+                <div><strong>Assigned Department:</strong> <span id="case-dept">-</span></div>
+                <div><strong>Reported Date:</strong> <span id="case-date">-</span></div>
+
+                <div style="margin-top: 0.75rem;">
+                  <strong>Original Citizen Description:</strong>
+                  <p id="case-description" style="color: var(--text-secondary); margin-top: 0.25rem; background: #f8fafc; padding: 0.75rem; border-radius: 4px; border: 1px solid var(--border-color);"></p>
+                </div>
+                <div id="case-norm-box" style="display: none; margin-top: 0.5rem;">
+                  <strong>Normalized English Representation:</strong>
+                  <p id="case-normalized" style="color: #0f766e; margin-top: 0.25rem; background: #f0fdfa; padding: 0.6rem; border-radius: 4px; border: 1px solid #ccfbf1; font-size: 0.85rem;"></p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Evidence Photo with Damage Bounding Box Overlay -->
+            <div class="card">
+              <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Photo Evidence &amp; Damage Localization</h3>
+                <span id="vision-detection-badge" style="font-size: 0.75rem; color: var(--text-secondary);"></span>
+              </div>
+              <div id="evidence-container">
+                <p style="color: var(--text-muted); font-size: 0.85rem;">No photo evidence attached.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: AI Analysis, Duplicate Detection, and Agent Runs -->
+          <div>
+            <!-- AI Damage Analysis Panel -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+              <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Hugging Face Vision &amp; Damage Intelligence</h3>
+                <button class="btn btn-secondary btn-sm" onclick="triggerVisionAnalysis()">Analyze Photo</button>
+              </div>
+              <div id="analysis-content" style="font-size: 0.85rem;">
+                <p style="color: var(--text-muted);">No analysis generated yet. Click 'Analyze Photo' or trigger Agentic Triage.</p>
+              </div>
+            </div>
+
+            <!-- Geospatial & Semantic Duplicate Detection Panel -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+              <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Semantic Duplicate Detection (Sentence Transformers)</h3>
+                <button class="btn btn-secondary btn-sm" onclick="checkDuplicates()">Rescan Proximity</button>
+              </div>
+              <div id="duplicates-container" style="font-size: 0.85rem;">
+                <p style="color: var(--text-muted);">Click to scan 300m radius using Hugging Face semantic sentence embeddings.</p>
+              </div>
+            </div>
+
+            <!-- Agentic AI Workflow & Tool Logs -->
+            <div class="card">
+              <div class="card-header">
+                <h3>8-Tool Agentic AI Incident Coordinator</h3>
+              </div>
+              <div id="agent-run-container" style="font-size: 0.85rem;">
+                <p style="color: var(--text-muted);">Agent has not triaged this incident yet. Click 'Run Agentic AI Triage' above to start automated analysis.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Priority Override Modal -->
+  <div id="priority-modal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem; font-weight: 700;">Override Incident Priority</h3>
+        <button style="border: none; background: none; font-size: 1.25rem; cursor: pointer;" onclick="closePriorityModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="override-priority">New Priority Level *</label>
+          <select id="override-priority" class="form-control">
+            <option value="LOW">LOW</option>
+            <option value="MEDIUM">MEDIUM</option>
+            <option value="HIGH">HIGH</option>
+            <option value="CRITICAL">CRITICAL</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="override-status">Update Status</label>
+          <select id="override-status" class="form-control">
+            <option value="UNDER_REVIEW">UNDER_REVIEW</option>
+            <option value="AI_ANALYZED">AI_ANALYZED</option>
+            <option value="WORK_ORDER_CREATED">WORK_ORDER_CREATED</option>
+            <option value="IN_PROGRESS">IN_PROGRESS</option>
+            <option value="RESOLVED">RESOLVED</option>
+            <option value="REJECTED">REJECTED</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="override-reason">Mandatory Officer Explanation *</label>
+          <textarea id="override-reason" class="form-control" required placeholder="Explain why the automated recommendation is being modified..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePriorityModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitPriorityOverride()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    Auth.requireAuth();
+    UI.renderSidebar("incidents");
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const incidentId = urlParams.get("id");
+
+    if (!incidentId) {
+      alert("Missing Incident ID");
+      window.location.href = "incidents.html";
+    }
+
+    let currentIncidentData = null;
+    let latestDetectedBBox = null;
+
+    async function loadIncidentDetails() {
+      try {
+        const res = await Api.get(`/incidents/${incidentId}`);
+        if (res.success && res.data) {
+          const d = res.data;
+          currentIncidentData = d;
+          document.getElementById("page-case-title").textContent = `Incident #${d.referenceNumber}`;
+          document.getElementById("case-ref").textContent = d.referenceNumber;
+          document.getElementById("case-category").textContent = d.category.replace(/_/g, ' ');
+          document.getElementById("case-lang").textContent = d.originalLanguage || "English";
+          document.getElementById("case-reporter").textContent = `${d.citizenName} (${d.citizenEmail})`;
+          document.getElementById("case-address").textContent = d.address || "Unspecified";
+          document.getElementById("case-coords").textContent = `${d.latitude}, ${d.longitude}`;
+          document.getElementById("case-priority").innerHTML = UI.getPriorityBadge(d.approvedPriority);
+          document.getElementById("case-status-badge").innerHTML = UI.getStatusBadge(d.status);
+          document.getElementById("case-dept").textContent = d.assignedDepartmentName || "Pending Assignment";
+          document.getElementById("case-date").textContent = UI.formatDate(d.createdAt);
+          document.getElementById("case-description").textContent = d.description;
+
+          if (d.normalizedDescription && d.normalizedDescription !== d.description) {
+            document.getElementById("case-norm-box").style.display = "block";
+            document.getElementById("case-normalized").textContent = d.normalizedDescription;
+          }
+
+          // Render Evidence Photo with Overlay
+          renderEvidencePhoto(d.evidenceFiles);
+        }
+
+        loadAnalysis();
+        checkDuplicates();
+        loadAgentRun();
+      } catch (err) {
+        UI.showToast("Failed to load incident details: " + err.message, "error");
+      }
+    }
+
+    function renderEvidencePhoto(files) {
+      const evContainer = document.getElementById("evidence-container");
+      if (files && files.length > 0) {
+        const file = files[0];
+        evContainer.innerHTML = `
+          <div class="image-overlay-wrapper" id="image-wrapper">
+            <img src="http://localhost:8080/api/incidents/evidence/file/${file}" class="evidence-thumb" id="evidence-img" alt="Damage Evidence" onload="applyBoundingBoxOverlay()">
+            <div id="bbox-element" class="bounding-box-overlay" style="display: none;">
+              <span id="bbox-label" class="bounding-box-label">Damage Region</span>
+            </div>
+          </div>
+        `;
+      } else {
+        evContainer.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem;">No evidence photo attached to this submission.</p>`;
+      }
+    }
+
+    function applyBoundingBoxOverlay() {
+      if (!latestDetectedBBox) return;
+      const img = document.getElementById("evidence-img");
+      const bboxEl = document.getElementById("bbox-element");
+      const labelEl = document.getElementById("bbox-label");
+      if (!img || !bboxEl) return;
+
+      const w = img.clientWidth;
+      const h = img.clientHeight;
+
+      const x = (latestDetectedBBox.x / 100) * w;
+      const y = (latestDetectedBBox.y / 100) * h;
+      const bw = (latestDetectedBBox.width / 100) * w;
+      const bh = (latestDetectedBBox.height / 100) * h;
+
+      bboxEl.style.left = `${x}px`;
+      bboxEl.style.top = `${y}px`;
+      bboxEl.style.width = `${bw}px`;
+      bboxEl.style.height = `${bh}px`;
+      bboxEl.style.display = "block";
+      labelEl.textContent = latestDetectedBBox.label || "Damage ROI";
+    }
+
+    async function loadAnalysis() {
+      try {
+        const res = await Api.get(`/incidents/${incidentId}/analysis`);
+        if (res.success && res.data) {
+          const a = res.data;
+          const isHeuristic = a.isHeuristic === true;
+          const badgeClass = isHeuristic ? "background: #fef3c7; color: #92400e; border: 1px solid #fde68a;" : "background: #f0fdf4; color: #166534; border: 1px solid #86efac;";
+          const badgeText = isHeuristic ? "Labeled Heuristic Fallback" : "Hugging Face Neural Vision";
+
+          if (a.detectedObjects) {
+            try {
+              const objs = typeof a.detectedObjects === "string" ? JSON.parse(a.detectedObjects) : a.detectedObjects;
+              if (objs && objs.length > 0 && objs[0].bounding_box) {
+                latestDetectedBBox = objs[0].bounding_box;
+                latestDetectedBBox.label = objs[0].label || a.predictedCategory;
+                applyBoundingBoxOverlay();
+                document.getElementById("vision-detection-badge").textContent = `Region: [${latestDetectedBBox.x}%, ${latestDetectedBBox.y}%]`;
+              }
+            } catch (e) {
+              console.warn("Parse bbox error:", e);
+            }
+          }
+
+          document.getElementById("analysis-content").innerHTML = `
+            <div style="${badgeClass} padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                <strong>${UI.escapeHtml(a.modelName)}</strong>
+                <span style="font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; ${badgeClass}">${badgeText}</span>
+              </div>
+              <div><strong>Predicted Category:</strong> ${UI.escapeHtml(a.predictedCategory)} (Confidence: <strong>${(a.confidence * 100).toFixed(1)}%</strong>)</div>
+              <div><strong>Status:</strong> ${UI.escapeHtml(a.analysisStatus)}</div>
+              <div style="margin-top: 0.4rem; line-height: 1.4;">${UI.escapeHtml(a.explanation)}</div>
+            </div>
+          `;
+        }
+      } catch {
+        // Not analyzed yet
+      }
+    }
+
+    async function triggerVisionAnalysis() {
+      try {
+        UI.showToast("Executing Hugging Face Vision Analysis...", "success");
+        const res = await Api.post(`/incidents/${incidentId}/analyze`, {});
+        if (res.success) {
+          UI.showToast("Vision Analysis Completed!", "success");
+          loadAnalysis();
+        }
+      } catch (err) {
+        UI.showToast("Analysis error: " + err.message, "error");
+      }
+    }
+
+    async function checkDuplicates() {
+      try {
+        const res = await Api.get(`/incidents/${incidentId}/duplicates`);
+        const cont = document.getElementById("duplicates-container");
+        if (res.success && res.data && res.data.length > 0) {
+          cont.innerHTML = res.data.map(dup => {
+            const level = dup.similarityLevel || "MEDIUM_SIMILARITY";
+            let badgeClass = "sim-badge-med";
+            if (level === "HIGH_SIMILARITY") badgeClass = "sim-badge-high";
+            else if (level === "LOW_SIMILARITY") badgeClass = "sim-badge-low";
+
+            return `
+              <div style="background: #ffffff; border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                  <div><strong>Matching Complaint:</strong> #${UI.escapeHtml(dup.relatedReferenceNumber)} (${UI.escapeHtml(dup.relatedCategory)})</div>
+                  <span class="${badgeClass}">${level.replace(/_/g, " ")}</span>
+                </div>
+                <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 0.3rem;">
+                  📍 <strong>Distance:</strong> ${dup.distanceMeters}m away | <strong>Similarity Score:</strong> ${(dup.similarityScore * 100).toFixed(0)}%
+                </div>
+                <div style="font-size: 0.8rem; color: #334155; margin-bottom: 0.5rem; background: #f8fafc; padding: 0.4rem; border-radius: 4px;">
+                  💡 ${UI.escapeHtml(dup.explanation || "Geospatial proximity and text similarity match.")}
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <span class="badge badge-medium" style="font-size: 0.75rem;">Status: ${UI.escapeHtml(dup.reviewStatus)}</span>
+                  ${dup.reviewStatus !== "CONFIRMED_DUPLICATE" ? `<button class="btn btn-secondary btn-sm" style="font-size: 0.75rem;" onclick="confirmDuplicate(${dup.id}, 'CONFIRMED_DUPLICATE')">Mark Duplicate</button>` : ''}
+                  ${dup.reviewStatus !== "DISMISSED" ? `<button class="btn btn-secondary btn-sm" style="font-size: 0.75rem;" onclick="confirmDuplicate(${dup.id}, 'DISMISSED')">Dismiss</button>` : ''}
+                </div>
+              </div>
+            `;
+          }).join("");
+        } else {
+          cont.innerHTML = `<p style="color: var(--text-muted);">No proximity duplicates detected within 300 meters.</p>`;
+        }
+      } catch (err) {
+        console.warn("Duplicates check error:", err);
+      }
+    }
+
+    async function confirmDuplicate(dupId, action) {
+      try {
+        const res = await Api.post(`/incidents/${incidentId}/duplicates/confirm`, {
+          duplicateId: dupId,
+          action: action
+        });
+        if (res.success) {
+          UI.showToast(`Duplicate status set: ${action}`, "success");
+          checkDuplicates();
+        }
+      } catch (err) {
+        UI.showToast(err.message, "error");
+      }
+    }
+
+    async function loadAgentRun() {
+      try {
+        const res = await Api.get(`/agent/runs/incident/${incidentId}`);
+        if (res.success && res.data) {
+          renderAgentRun(res.data);
+        }
+      } catch {
+        // No agent run yet
+      }
+    }
+
+    async function runAgentTriage() {
+      const btn = document.getElementById("btn-run-agent");
+      btn.disabled = true;
+      btn.textContent = "🤖 Running 8 Tools...";
+      UI.showToast("Agentic triage workflow executing across 8 tools...", "info");
+
+      try {
+        const res = await Api.post(`/agent/analyze/${incidentId}`, {});
+        if (res.success && res.data) {
+          UI.showToast("Agentic triage completed successfully!", "success");
+          renderAgentRun(res.data);
+          loadIncidentDetails();
+        }
+      } catch (err) {
+        UI.showToast("Agent error: " + err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "🤖 Run Agentic AI Triage";
+      }
+    }
+
+    function renderAgentRun(run) {
+      const cont = document.getElementById("agent-run-container");
+      const logsHtml = (run.toolLogs || []).map(l => `
+        <div class="tool-log-item">
+          <div class="tool-log-name">🔧 ${UI.escapeHtml(l.toolName)}</div>
+          <div style="color: var(--text-secondary); font-size: 0.75rem;">Input: ${UI.escapeHtml(l.inputSummary)}</div>
+          <div style="margin-top: 0.2rem;">${UI.escapeHtml(l.outputSummary)}</div>
+        </div>
+      `).join("");
+
+      cont.innerHTML = `
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
+          <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">Intelligence Recommendation Briefing:</div>
+          <div style="white-space: pre-line; color: var(--text-secondary); line-height: 1.5;">${UI.escapeHtml(run.recommendation)}</div>
+        </div>
+        <div style="font-weight: 600; font-size: 0.8rem; margin-bottom: 0.4rem; color: var(--text-secondary);">EXECUTED AGENTIC TOOLS (8/8):</div>
+        <div>${logsHtml}</div>
+      `;
+    }
+
+    function openPriorityModal() {
+      document.getElementById("priority-modal").classList.add("show");
+    }
+
+    function closePriorityModal() {
+      document.getElementById("priority-modal").classList.remove("show");
+    }
+
+    async function submitPriorityOverride() {
+      const priority = document.getElementById("override-priority").value;
+      const status = document.getElementById("override-status").value;
+      const reason = document.getElementById("override-reason").value;
+
+      if (!reason.trim()) {
+        alert("Please provide a mandatory explanation for overriding priority.");
+        return;
+      }
+
+      try {
+        const res = await Api.patch(`/incidents/${incidentId}/status`, {
+          priority: priority,
+          status: status,
+          explanation: reason
+        });
+        if (res.success) {
+          UI.showToast("Priority and status updated successfully!", "success");
+          closePriorityModal();
+          loadIncidentDetails();
+        }
+      } catch (err) {
+        UI.showToast(err.message, "error");
+      }
+    }
+
+    loadIncidentDetails();
+  </script>
+</body>
+</html>

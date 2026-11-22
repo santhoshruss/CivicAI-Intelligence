@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report Damage – CivicAI</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .form-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .photo-preview-box {
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      text-align: center;
+      background: #f8fafc;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      position: relative;
+    }
+    .photo-preview-box:hover {
+      border-color: var(--primary);
+    }
+    .photo-preview-img {
+      max-width: 100%;
+      max-height: 250px;
+      border-radius: 6px;
+      display: none;
+      margin: 0.75rem auto 0;
+    }
+    .location-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .nlp-preview-card {
+      display: none;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .nlp-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      background: #dbeafe;
+      color: #1e40af;
+      margin-right: 0.5rem;
+    }
+    .voice-control-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .record-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .record-btn.recording {
+      background: #fee2e2;
+      border-color: #ef4444;
+      color: #b91c1c;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    .modal-card {
+      background: #ffffff;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 100%;
+      padding: 1.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <h1 class="page-title">Report Infrastructure Damage</h1>
+        <div class="topbar-actions">
+          <a href="citizen-dashboard.html" class="btn btn-secondary btn-sm">My Reports</a>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <div class="form-container">
+          <div class="card">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+              <h3>Submit New Public Hazard Report</h3>
+              <span style="font-size: 0.8rem; color: var(--text-secondary);">English, தமிழ், &amp; Tanglish Supported</span>
+            </div>
+
+            <form id="report-form">
+              <!-- Description with Voice & Multilingual Support -->
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                  <label for="description" style="margin: 0;">Detailed Description *</label>
+                  <div class="voice-control-bar">
+                    <button type="button" id="record-btn" class="record-btn" onclick="toggleAudioRecording()">
+                      <span id="record-icon">🎤</span>
+                      <span id="record-text">Voice Input (Whisper / Speech)</span>
+                    </button>
+                    <span id="record-timer" style="display: none; font-size: 0.8rem; font-weight: bold; color: #ef4444;">00:00</span>
+                  </div>
+                </div>
+                <textarea id="description" class="form-control" required rows="4" 
+                  placeholder="Describe the hazard... You can type in English, Tamil, or Tanglish (e.g., 'Enga street la romba periya pothole irukku')..."
+                  oninput="handleDescriptionChange()"></textarea>
+
+                <!-- Real-time Multilingual NLP Preview -->
+                <div id="nlp-preview" class="nlp-preview-card">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.3rem;">
+                    <div>
+                      <span id="nlp-lang-badge" class="nlp-badge">English</span>
+                      <span id="nlp-dept-text" style="color: var(--text-secondary);"></span>
+                    </div>
+                    <button type="button" id="apply-cat-btn" class="btn btn-sm btn-primary" style="display: none; padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="applySuggestedCategory()">
+                      Apply Category
+                    </button>
+                  </div>
+                  <div id="nlp-norm-text" style="color: #1e293b; margin-top: 0.2rem;"></div>
+                </div>
+              </div>
+
+              <!-- Category Selector -->
+              <div class="form-group">
+                <label for="category">Damage Category *</label>
+                <select id="category" class="form-control" required>
+                  <option value="">-- Select Damage Category --</option>
+                  <option value="POTHOLE">Pothole (Road Cavity / Crater)</option>
+                  <option value="ROAD_CRACK">Road Crack (Asphalt Settlement / Fissure)</option>
+                  <option value="STREETLIGHT_DAMAGE">Streetlight Damage (Downed Pole / Exposed Wires)</option>
+                  <option value="WATER_LEAKAGE">Water Leakage (Pipe Burst / Main Rupture)</option>
+                  <option value="GARBAGE_OVERFLOW">Garbage Overflow (Dumpster Spill / Waste Hazard)</option>
+                </select>
+              </div>
+
+              <!-- Geolocation GPS -->
+              <div class="form-group">
+                <label>Incident Geolocation Coordinates *</label>
+                <div class="location-bar">
+                  <button type="button" id="geo-btn" class="btn btn-secondary btn-sm" onclick="acquireLocation()">📍 Use Current GPS Location</button>
+                  <span id="geo-status" style="font-size: 0.8rem; color: var(--text-muted); align-self: center;">Click to fetch browser GPS</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                  <div>
+                    <label for="latitude" style="font-size: 0.75rem; font-weight: normal;">Latitude</label>
+                    <input type="number" step="0.0000001" id="latitude" class="form-control" required placeholder="13.082680">
+                  </div>
+                  <div>
+                    <label for="longitude" style="font-size: 0.75rem; font-weight: normal;">Longitude</label>
+                    <input type="number" step="0.0000001" id="longitude" class="form-control" required placeholder="80.270718">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Address / Landmark -->
+              <div class="form-group">
+                <label for="address">Street Address / Landmark</label>
+                <input type="text" id="address" class="form-control" placeholder="e.g., Near Bus Stand, Main Road">
+              </div>
+
+              <!-- Photo Evidence Upload -->
+              <div class="form-group">
+                <label>Photo Evidence (JPEG / PNG / WebP)</label>
+                <div class="photo-preview-box" onclick="document.getElementById('evidence-file').click()">
+                  <div id="upload-prompt">
+                    <span style="font-size: 2rem;">📸</span>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                      Click or drop photo here to attach evidence
+                    </p>
+                  </div>
+                  <img id="preview-img" class="photo-preview-img" alt="Preview">
+                </div>
+                <input type="file" id="evidence-file" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleFilePreview(this)">
+              </div>
+
+              <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                <a href="citizen-dashboard.html" class="btn btn-secondary">Cancel</a>
+                <button type="button" class="btn btn-primary" onclick="openConfirmationModal()">Review &amp; Submit</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div id="confirm-modal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem;">Confirm Incident Submission</h3>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+        Please review the triage details before submitting to municipal authorities:
+      </p>
+
+      <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.75rem; font-size: 0.85rem; margin-bottom: 1.25rem;">
+        <p><strong>Category:</strong> <span id="modal-cat">-</span></p>
+        <p><strong>Language:</strong> <span id="modal-lang">English</span></p>
+        <p><strong>Address:</strong> <span id="modal-addr">-</span></p>
+        <p><strong>Coordinates:</strong> <span id="modal-coords">-</span></p>
+        <p style="margin-top: 0.5rem;"><strong>Description:</strong></p>
+        <p id="modal-desc" style="color: var(--text-secondary); font-style: italic;"></p>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeConfirmationModal()">Back to Edit</button>
+        <button type="button" id="confirm-submit-btn" class="btn btn-primary btn-sm" onclick="executeFinalSubmission()">Confirm &amp; Dispatch</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    Auth.requireAuth(["CITIZEN", "ADMIN"]);
+    UI.renderSidebar("report-incident");
+
+    let isRecording = false;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recordTimerInterval = null;
+    let recordSeconds = 0;
+    let detectedCategoryCandidate = "";
+    let detectedLang = "English";
+    let normalizedEnglishDesc = "";
+
+    // Tanglish / Tamil client normalizer fallback
+    const TANGLISH_PATTERNS = [
+      { p: /\\benga\\b/gi, r: "our" },
+      { p: /\\btheru(la)?\\b/gi, r: "street" },
+      { p: /\\bpallam\\b|\\bgundu\\s*kuzhi\\b/gi, r: "pothole" },
+      { p: /\\bromba\\s*periya\\b/gi, r: "very large" },
+      { p: /\\birukku\\b/gi, r: "is present" },
+      { p: /\\bvilakku\\b/gi, r: "streetlight" },
+      { p: /\\beriyala\\b/gi, r: "not working" },
+      { p: /\\bthanneer\\b|\\bthanni\\b/gi, r: "water" },
+      { p: /\\bkuppai\\b/gi, r: "garbage" }
+    ];
+
+    function handleDescriptionChange() {
+      const text = document.getElementById("description").value.trim();
+      const nlpCard = document.getElementById("nlp-preview");
+      if (text.length < 5) {
+        nlpCard.style.display = "none";
+        return;
+      }
+
+      // Check language
+      let isTamilScript = /[\\u0B80-\\u0BFF]/.test(text);
+      let isTanglish = /(enga|theru|pallam|romba|periya|irukku|vilakku|eriyala|thanneer|thanni|kuppai|allala)/i.test(text);
+
+      detectedLang = isTamilScript ? "Tamil" : (isTanglish ? "Tanglish" : "English");
+      document.getElementById("nlp-lang-badge").textContent = detectedLang;
+
+      // Normalize text
+      let norm = text;
+      TANGLISH_PATTERNS.forEach(pat => { norm = norm.replace(pat.p, pat.r); });
+      normalizedEnglishDesc = norm;
+
+      let cat = "";
+      let dept = "Road Maintenance";
+      const lower = norm.toLowerCase();
+      if (lower.includes("pothole") || lower.includes("cavity") || lower.includes("crater")) {
+        cat = "POTHOLE"; dept = "Road Maintenance";
+      } else if (lower.includes("crack") || lower.includes("settlement")) {
+        cat = "ROAD_CRACK"; dept = "Road Maintenance";
+      } else if (lower.includes("light") || lower.includes("wire") || lower.includes("spark") || lower.includes("pole")) {
+        cat = "STREETLIGHT_DAMAGE"; dept = "Electrical & Lighting";
+      } else if (lower.includes("water") || lower.includes("leak") || lower.includes("burst") || lower.includes("drainage")) {
+        cat = "WATER_LEAKAGE"; dept = "Water Supply & Sewage";
+      } else if (lower.includes("garbage") || lower.includes("trash") || lower.includes("dump") || lower.includes("odor")) {
+        cat = "GARBAGE_OVERFLOW"; dept = "Sanitation & Waste Management";
+      }
+
+      detectedCategoryCandidate = cat;
+
+      nlpCard.style.display = "block";
+      document.getElementById("nlp-dept-text").textContent = `Assigned Dept: ${dept}`;
+      document.getElementById("nlp-norm-text").innerHTML = `<strong>Normalized:</strong> "${UI.escapeHtml(norm)}"`;
+
+      const applyBtn = document.getElementById("apply-cat-btn");
+      if (cat && document.getElementById("category").value !== cat) {
+        applyBtn.style.display = "inline-block";
+        applyBtn.textContent = `Auto-Set ${cat}`;
+      } else {
+        applyBtn.style.display = "none";
+      }
+    }
+
+    function applySuggestedCategory() {
+      if (detectedCategoryCandidate) {
+        document.getElementById("category").value = detectedCategoryCandidate;
+        document.getElementById("apply-cat-btn").style.display = "none";
+        UI.showToast(`Category set to ${detectedCategoryCandidate}`, "info");
+      }
+    }
+
+    // Voice Recording logic (MediaRecorder + Whisper / Speech fallback)
+    async function toggleAudioRecording() {
+      const btn = document.getElementById("record-btn");
+      const icon = document.getElementById("record-icon");
+      const text = document.getElementById("record-text");
+      const timer = document.getElementById("record-timer");
+
+      if (!isRecording) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          // Fallback to browser Web Speech API
+          runBrowserSpeechFallback();
+          return;
+        }
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioChunks = [];
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+          mediaRecorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            await processRecordedAudio();
+          };
+
+          mediaRecorder.start();
+          isRecording = true;
+          btn.classList.add("recording");
+          icon.textContent = "⏹️";
+          text.textContent = "Recording... Click to Stop";
+          timer.style.display = "inline";
+          recordSeconds = 0;
+          timer.textContent = "00:00";
+          recordTimerInterval = setInterval(() => {
+            recordSeconds++;
+            const mins = String(Math.floor(recordSeconds / 60)).padStart(2, "0");
+            const secs = String(recordSeconds % 60).padStart(2, "0");
+            timer.textContent = `${mins}:${secs}`;
+          }, 1000);
+        } catch (err) {
+          console.warn("Microphone access error:", err);
+          runBrowserSpeechFallback();
+        }
+      } else {
+        // Stop recording
+        isRecording = false;
+        clearInterval(recordTimerInterval);
+        timer.style.display = "none";
+        btn.classList.remove("recording");
+        icon.textContent = "⏳";
+        text.textContent = "Processing Speech...";
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+          mediaRecorder.stop();
+        }
+      }
+    }
+
+    async function processRecordedAudio() {
+      const btn = document.getElementById("record-btn");
+      const icon = document.getElementById("record-icon");
+      const text = document.getElementById("record-text");
+
+      try {
+        const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+        const fd = new FormData();
+        fd.append("file", audioBlob, "complaint_audio.wav");
+
+        // Upload to FastAPI speech transcription endpoint
+        const res = await fetch("http://localhost:8000/api/ai/transcribe-audio", {
+          method: "POST",
+          body: fd
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.transcription && data.transcription.trim().length > 0) {
+            const descEl = document.getElementById("description");
+            descEl.value = (descEl.value ? descEl.value + " " : "") + data.transcription;
+            handleDescriptionChange();
+            UI.showToast("Voice transcribed successfully with Whisper!", "success");
+          } else {
+            runBrowserSpeechFallback();
+          }
+        } else {
+          runBrowserSpeechFallback();
+        }
+      } catch (err) {
+        console.warn("Server ASR error, running browser fallback:", err);
+        runBrowserSpeechFallback();
+      } finally {
+        icon.textContent = "🎤";
+        text.textContent = "Voice Input (Whisper / Speech)";
+      }
+    }
+
+    function runBrowserSpeechFallback() {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        UI.showToast("Speech recognition not supported in this browser.", "error");
+        return;
+      }
+      const rec = new SpeechRec();
+      rec.lang = "en-IN";
+      rec.onstart = () => { UI.showToast("Listening... Speak your complaint now.", "info"); };
+      rec.onresult = (ev) => {
+        let transcript = "";
+        for (let i = ev.resultIndex; i < ev.results.length; ++i) {
+          transcript += ev.results[i][0].transcript;
+        }
+        const descEl = document.getElementById("description");
+        descEl.value = (descEl.value ? descEl.value + " " : "") + transcript;
+        handleDescriptionChange();
+      };
+      rec.onerror = (e) => { UI.showToast("Voice input notice: " + e.error, "warning"); };
+      rec.start();
+    }
+
+    function acquireLocation() {
+      const statusEl = document.getElementById("geo-status");
+      if (!navigator.geolocation) {
+        statusEl.textContent = "Geolocation not supported. Enter manually.";
+        return;
+      }
+      statusEl.textContent = "Fetching GPS coordinates...";
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          document.getElementById("latitude").value = pos.coords.latitude.toFixed(6);
+          document.getElementById("longitude").value = pos.coords.longitude.toFixed(6);
+          statusEl.textContent = "✅ Coordinates successfully acquired!";
+        },
+        (err) => {
+          statusEl.textContent = "⚠️ " + err.message + ". Enter manually.";
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+
+    function handleFilePreview(input) {
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = document.getElementById("preview-img");
+          img.src = e.target.result;
+          img.style.display = "block";
+          document.getElementById("upload-prompt").style.display = "none";
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function openConfirmationModal() {
+      const cat = document.getElementById("category").value;
+      const desc = document.getElementById("description").value.trim();
+      const lat = document.getElementById("latitude").value;
+      const lon = document.getElementById("longitude").value;
+      const addr = document.getElementById("address").value.trim();
+
+      if (!cat || !desc || !lat || !lon) {
+        UI.showToast("Please fill in Category, Description, and GPS coordinates.", "error");
+        return;
+      }
+
+      document.getElementById("modal-cat").textContent = cat;
+      document.getElementById("modal-lang").textContent = detectedLang;
+      document.getElementById("modal-addr").textContent = addr || "Not specified";
+      document.getElementById("modal-coords").textContent = `${lat}, ${lon}`;
+      document.getElementById("modal-desc").textContent = desc;
+
+      document.getElementById("confirm-modal").style.display = "flex";
+    }
+
+    function closeConfirmationModal() {
+      document.getElementById("confirm-modal").style.display = "none";
+    }
+
+    async function executeFinalSubmission() {
+      const btn = document.getElementById("confirm-submit-btn");
+      btn.disabled = true;
+      btn.textContent = "Dispatching...";
+
+      const payload = {
+        category: document.getElementById("category").value,
+        description: document.getElementById("description").value,
+        originalLanguage: detectedLang,
+        normalizedDescription: normalizedEnglishDesc,
+        latitude: parseFloat(document.getElementById("latitude").value),
+        longitude: parseFloat(document.getElementById("longitude").value),
+        address: document.getElementById("address").value
+      };
+
+      try {
+        const res = await Api.post("/incidents", payload);
+        if (res.success && res.data) {
+          const incidentId = res.data.id;
+          const refNo = res.data.referenceNumber;
+
+          // If evidence photo was attached, upload it
+          const fileInput = document.getElementById("evidence-file");
+          if (fileInput.files && fileInput.files[0]) {
+            btn.textContent = "Uploading Photo...";
+            const fd = new FormData();
+            fd.append("file", fileInput.files[0]);
+            await Api.upload(`/incidents/${incidentId}/evidence`, fd).catch((err) => {
+              console.warn("Evidence photo upload notice:", err);
+            });
+          }
+
+          closeConfirmationModal();
+          UI.showToast(`Incident #${refNo} submitted successfully!`, "success");
+          setTimeout(() => {
+            window.location.href = "citizen-dashboard.html";
+          }, 800);
+        } else {
+          UI.showToast(res.message || "Submission failed", "error");
+          btn.disabled = false;
+          btn.textContent = "Confirm & Dispatch";
+        }
+      } catch (err) {
+        UI.showToast(err.message, "error");
+        btn.disabled = false;
+        btn.textContent = "Confirm & Dispatch";
+      }
+    }
+  </script>
+</body>
+</html>

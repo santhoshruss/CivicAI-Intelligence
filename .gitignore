@@ -1,0 +1,51 @@
+# Git ignore for CivicAI Full Stack Application
+
+# Environments and Secrets
+.env
+*.env.local
+*.env.*.local
+*.key
+*.pem
+*.pfx
+
+# IDEs & System
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Java & Maven
+target/
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+faiss_index/
+*.faiss
+*.pkl
+
+# Uploads & User Generated Content (keep directory structure)
+uploads/evidence/*
+!uploads/evidence/.gitkeep
+uploads/documents/*
+!uploads/documents/.gitkeep
+
+# Node / Frontend temporary
+node_modules/
+npm-debug.log*

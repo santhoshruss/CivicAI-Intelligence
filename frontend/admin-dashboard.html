@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Console – CivicAI</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <h1 class="page-title">City Administration Console</h1>
+        <div class="topbar-actions">
+          <button class="btn btn-secondary btn-sm" onclick="loadAdminData()">🔄 Refresh Directory</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <!-- Users Management Directory -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <div class="card-header">
+            <h3>Municipal User Directory & Access Control</h3>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>User ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Department</th>
+                  <th>Status</th>
+                  <th>Created Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody">
+                <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Loading user directory...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- System Audit Trail -->
+        <div class="card">
+          <div class="card-header">
+            <h3>System Audit Logs</h3>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Log ID</th>
+                  <th>Action</th>
+                  <th>Entity</th>
+                  <th>Details</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody id="audit-tbody">
+                <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Loading audit logs...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Role Edit Modal -->
+  <div id="role-modal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem; font-weight: 700;">Update User Role & Access</h3>
+        <button style="border: none; background: none; font-size: 1.25rem; cursor: pointer;" onclick="closeRoleModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-user-id">
+        <div class="form-group">
+          <label for="edit-role-select">Assigned Role *</label>
+          <select id="edit-role-select" class="form-control">
+            <option value="CITIZEN">CITIZEN</option>
+            <option value="MUNICIPAL_OFFICER">MUNICIPAL_OFFICER</option>
+            <option value="FIELD_INSPECTOR">FIELD_INSPECTOR</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="edit-dept-select">Assigned Department</label>
+          <select id="edit-dept-select" class="form-control">
+            <option value="">None / Citizen</option>
+            <option value="1">Roads & Infrastructure Maintenance</option>
+            <option value="2">Electrical & Public Lighting</option>
+            <option value="3">Water Supply & Drainage Authority</option>
+            <option value="4">Solid Waste Management</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Account Status</label>
+          <div>
+            <label style="font-weight: normal; cursor: pointer;">
+              <input type="checkbox" id="edit-enabled-check" checked> Account Enabled
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeRoleModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitRoleUpdate()">Save Role</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    Auth.requireAuth(["ADMIN"]);
+    UI.renderSidebar("admin-dashboard");
+
+    async function loadAdminData() {
+      loadUsers();
+      loadAuditLogs();
+    }
+
+    async function loadUsers() {
+      try {
+        const res = await Api.get("/admin/users");
+        if (res.success && res.data) {
+          const tbody = document.getElementById("users-tbody");
+          tbody.innerHTML = res.data.map(u => `
+            <tr>
+              <td>#${u.id}</td>
+              <td><strong>${UI.escapeHtml(u.name)}</strong></td>
+              <td>${UI.escapeHtml(u.email)}</td>
+              <td><span class="badge badge-medium">${UI.escapeHtml(u.role)}</span></td>
+              <td>${UI.escapeHtml(u.departmentName || 'None')}</td>
+              <td><span class="badge ${u.enabled ? 'badge-resolved' : 'badge-rejected'}">${u.enabled ? 'Active' : 'Disabled'}</span></td>
+              <td>${UI.formatDate(u.createdAt)}</td>
+              <td>
+                <button class="btn btn-secondary btn-sm" onclick="openRoleModal(${u.id}, '${u.role}', ${u.departmentId || 'null'}, ${u.enabled})">Edit Role</button>
+              </td>
+            </tr>
+          `).join("");
+        }
+      } catch (err) {
+        UI.showToast("Failed to load users: " + err.message, "error");
+      }
+    }
+
+    async function loadAuditLogs() {
+      try {
+        const res = await Api.get("/admin/audit-logs?size=15");
+        if (res.success && res.data) {
+          const tbody = document.getElementById("audit-tbody");
+          const logs = res.data.content || [];
+          if (logs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">No audit logs recorded yet.</td></tr>`;
+            return;
+          }
+          tbody.innerHTML = logs.map(l => `
+            <tr>
+              <td>#${l.id}</td>
+              <td><strong>${UI.escapeHtml(l.action)}</strong></td>
+              <td>${UI.escapeHtml(l.entityName)} ${l.entityId ? '#' + l.entityId : ''}</td>
+              <td>${UI.escapeHtml(l.details || '-')}</td>
+              <td>${UI.formatDate(l.createdAt)}</td>
+            </tr>
+          `).join("");
+        }
+      } catch (err) {
+        console.warn("Audit logs error:", err);
+      }
+    }
+
+    function openRoleModal(userId, currentRole, deptId, enabled) {
+      document.getElementById("edit-user-id").value = userId;
+      document.getElementById("edit-role-select").value = currentRole;
+      document.getElementById("edit-dept-select").value = deptId || "";
+      document.getElementById("edit-enabled-check").checked = enabled;
+      document.getElementById("role-modal").classList.add("show");
+    }
+
+    function closeRoleModal() {
+      document.getElementById("role-modal").classList.remove("show");
+    }
+
+    async function submitRoleUpdate() {
+      const userId = document.getElementById("edit-user-id").value;
+      const role = document.getElementById("edit-role-select").value;
+      const deptVal = document.getElementById("edit-dept-select").value;
+      const enabled = document.getElementById("edit-enabled-check").checked;
+
+      const payload = {
+        role: role,
+        departmentId: deptVal ? parseInt(deptVal) : null,
+        enabled: enabled
+      };
+
+      try {
+        const res = await Api.patch(`/admin/users/${userId}/role`, payload);
+        if (res.success) {
+          UI.showToast("User role updated successfully!", "success");
+          closeRoleModal();
+          loadUsers();
+        }
+      } catch (err) {
+        UI.showToast(err.message, "error");
+      }
+    }
+
+    loadAdminData();
+  </script>
+</body>
+</html>

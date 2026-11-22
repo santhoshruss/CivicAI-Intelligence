@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Work Orders – CivicAI</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <h1 class="page-title">Work Order Management</h1>
+        <div class="topbar-actions">
+          <button class="btn btn-secondary btn-sm" onclick="loadWorkOrders()">🔄 Refresh</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <!-- Work Orders Filter Bar -->
+        <div class="card" style="margin-bottom: 1.25rem;">
+          <div style="display: flex; gap: 1rem; align-items: center;">
+            <div style="flex: 1;">
+              <select id="wo-status-filter" class="form-control" onchange="loadWorkOrders()">
+                <option value="">All Statuses</option>
+                <option value="DRAFT">Draft (Staged by Agent)</option>
+                <option value="APPROVED">Approved (Ready for Assignment)</option>
+                <option value="ASSIGNED">Assigned (Inspector Assigned)</option>
+                <option value="IN_PROGRESS">In Progress (Field Work Started)</option>
+                <option value="RESOLVED">Resolved (Work Completed)</option>
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <select id="wo-priority-filter" class="form-control" onchange="loadWorkOrders()">
+                <option value="">All Priorities</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Work Orders Table -->
+        <div class="card">
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Incident Ref</th>
+                  <th>Category</th>
+                  <th>Department</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Assigned Inspector</th>
+                  <th>Created Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="work-orders-tbody">
+                <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Loading work orders...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Inspector Assignment Modal -->
+  <div id="assign-modal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem; font-weight: 700;">Assign Field Inspector</h3>
+        <button style="border: none; background: none; font-size: 1.25rem; cursor: pointer;" onclick="closeAssignModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="assign-wo-id">
+        <div class="form-group">
+          <label for="assign-inspector-select">Select Certified Field Inspector *</label>
+          <select id="assign-inspector-select" class="form-control" required>
+            <option value="3">Marcus Cole (Field Inspector - Electrical & Roads)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeAssignModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitAssignment()">Confirm Assignment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inspector Progress Update Modal -->
+  <div id="update-modal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem; font-weight: 700;">Update Work Order Status</h3>
+        <button style="border: none; background: none; font-size: 1.25rem; cursor: pointer;" onclick="closeUpdateModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="update-wo-id">
+        <div class="form-group">
+          <label for="update-status-select">Status Progression *</label>
+          <select id="update-status-select" class="form-control">
+            <option value="IN_PROGRESS">IN_PROGRESS (Arrived On-Site / Excavating)</option>
+            <option value="RESOLVED">RESOLVED (Repairs Complete & Asphalt Sealed)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="update-notes">Inspection & Repair Notes *</label>
+          <textarea id="update-notes" class="form-control" rows="3" placeholder="Detail repair equipment deployed, materials applied, and safety check results..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeUpdateModal()">Cancel</button>
+        <button class="btn btn-success" onclick="submitStatusUpdate()">Save Update</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    Auth.requireAuth(["MUNICIPAL_OFFICER", "FIELD_INSPECTOR", "ADMIN"]);
+    UI.renderSidebar("work-orders");
+
+    const currentUser = Auth.getUser();
+
+    async function loadWorkOrders() {
+      const status = document.getElementById("wo-status-filter").value;
+      const priority = document.getElementById("wo-priority-filter").value;
+
+      let query = `?size=50`;
+      if (status) query += `&status=${status}`;
+      if (priority) query += `&priority=${priority}`;
+
+      try {
+        const res = await Api.get(`/work-orders${query}`);
+        if (res.success && res.data) {
+          const list = res.data.content || [];
+          const tbody = document.getElementById("work-orders-tbody");
+
+          if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 2rem;">No work orders found.</td></tr>`;
+            return;
+          }
+
+          tbody.innerHTML = list.map(wo => {
+            const isOfficer = ["MUNICIPAL_OFFICER", "ADMIN"].includes(currentUser.role);
+            let actionBtns = "";
+
+            if (isOfficer && wo.status === "DRAFT") {
+              actionBtns += `<button class="btn btn-success btn-sm" onclick="approveOrder(${wo.id})">Approve Order</button> `;
+            }
+
+            if (isOfficer && (wo.status === "APPROVED" || wo.status === "DRAFT")) {
+              actionBtns += `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${wo.id})">Assign Inspector</button> `;
+            }
+
+            if (wo.status === "ASSIGNED" || wo.status === "IN_PROGRESS") {
+              actionBtns += `<button class="btn btn-secondary btn-sm" onclick="openUpdateModal(${wo.id}, '${wo.status}')">Update Progress</button> `;
+            }
+
+            return `
+              <tr>
+                <td><strong>WO-${wo.id}</strong></td>
+                <td><a href="incident-details.html?id=${wo.incidentId}" style="color: var(--primary); font-weight: 600;">${UI.escapeHtml(wo.incidentRef)}</a></td>
+                <td>${UI.escapeHtml(wo.incidentCategory.replace('_', ' '))}</td>
+                <td>${UI.escapeHtml(wo.departmentName || 'General Works')}</td>
+                <td>${UI.getPriorityBadge(wo.priority)}</td>
+                <td>${UI.getStatusBadge(wo.status)}</td>
+                <td>${UI.escapeHtml(wo.inspectorName || 'Unassigned')}</td>
+                <td>${UI.formatDate(wo.createdAt)}</td>
+                <td>${actionBtns || '<span style="color: var(--text-muted); font-size: 0.8rem;">Completed</span>'}</td>
+              </tr>
+            `;
+          }).join("");
+        }
+      } catch (err) {
+        UI.showToast("Error loading work orders: " + err.message, "error");
+      }
+    }
+
+    async function approveOrder(woId) {
+      if (!confirm("Are you sure you want to approve this work order for municipal execution?")) return;
+      try {
+        const res = await Api.post(`/work-orders/${woId}/approve`, { notes: "Authorized by municipal officer." });
+        if (res.success) {
+          UI.showToast("Work Order officially approved!", "success");
+          loadWorkOrders();
+        }
+      } catch (err) {
+        UI.showToast(err.message, "error");
+      }
+    }
+
+    function openAssignModal(woId) {
+      document.getElementById("assign-wo-id").value = woId;
+      document.getElementById("assign-modal").classList.add("show");
+    }
+
+    function closeAssignModal() {
+      document.getElementById("assign-modal").classList.remove("show");
+    }
+
+    async function submitAssignment() {
+      const woId = document.getElementById("assign-wo-id").value;
+      const inspectorId = parseInt(document.getElementById("assign-inspector-select").value);
+
+      try {
+        const res = await Api.post(`/work-orders/${woId}/assign`, { inspectorId });
+        if (res.success) {
+          UI.showToast("Work order assigned to inspector!", "success");
+          closeAssignModal();
+          loadWorkOrders();
+        }
+      } catch (err) {
+        UI.showToast(err.message, "error");
+      }
+    }
+
+    function openUpdateModal(woId, currentStatus) {
+      document.getElementById("update-wo-id").value = woId;
+      document.getElementById("update-notes").value = "";
+      document.getElementById("update-modal").classList.add("show");
+    }
+
+    function closeUpdateModal() {
+      document.getElementById("update-modal").classList.remove("show");
+    }
+
+    async function submitStatusUpdate() {
+      const woId = document.getElementById("update-wo-id").value;
+      const newStatus = document.getElementById("update-status-select").value;
+      const notes = document.getElementById("update-notes").value;
+
+      if (!notes.trim()) {
+        alert("Please enter inspection notes.");
+        return;
+      }
+
+      try {
+        const res = await Api.patch(`/work-orders/${woId}/status`, {
+          newStatus: newStatus,
+          notes: notes
+        });
+        if (res.success) {
+          UI.showToast(`Work order updated to ${newStatus}!`, "success");
+          closeUpdateModal();
+          loadWorkOrders();
+        }
+      } catch (err) {
+        UI.showToast(err.message, "error");
+      }
+    }
+
+    loadWorkOrders();
+  </script>
+</body>
+</html>

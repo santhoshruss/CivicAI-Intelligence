@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In – CivicAI</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+    .auth-card {
+      background: #ffffff;
+      border-radius: var(--radius);
+      padding: 2.25rem;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: var(--shadow-lg);
+    }
+    .demo-role-btn {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: #f8fafc;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .demo-role-btn:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body class="auth-page">
+
+  <div class="auth-card">
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+      <div style="width: 44px; height: 44px; background: #0284c7; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.5rem; margin-bottom: 0.5rem;">C</div>
+      <h2 style="font-size: 1.5rem; font-weight: 700;">CivicAI Portal</h2>
+      <p style="color: var(--text-secondary); font-size: 0.85rem;">Sign in to access your municipal workspace</p>
+    </div>
+
+    <!-- Quick Demo Role Switcher for seamless testing -->
+    <div style="margin-bottom: 1.25rem; padding: 0.75rem; background: #f1f5f9; border-radius: 6px;">
+      <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.4rem;">QUICK TEST ACCOUNTS:</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+        <button type="button" class="demo-role-btn" onclick="fillDemo('citizen@civicai.org', 'Password@123')">Citizen</button>
+        <button type="button" class="demo-role-btn" onclick="fillDemo('officer@civicai.gov', 'Password@123')">Officer</button>
+        <button type="button" class="demo-role-btn" onclick="fillDemo('inspector@civicai.gov', 'Password@123')">Inspector</button>
+        <button type="button" class="demo-role-btn" onclick="fillDemo('admin@civicai.gov', 'Password@123')">Admin</button>
+      </div>
+    </div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" class="form-control" required placeholder="you@example.com">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" class="form-control" required placeholder="••••••••">
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">Sign In</button>
+    </form>
+
+    <div style="text-align: center; margin-top: 1.25rem; font-size: 0.85rem; color: var(--text-secondary);">
+      Citizen without an account? <a href="register.html" style="color: var(--primary); font-weight: 600; text-decoration: none;">Register here</a>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    function fillDemo(email, pass) {
+      document.getElementById("email").value = email;
+      document.getElementById("password").value = pass;
+    }
+
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("submit-btn");
+      btn.disabled = true;
+      btn.textContent = "Authenticating...";
+
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      try {
+        const res = await Api.post("/auth/login", { email, password });
+        if (res.success && res.data) {
+          Auth.setSession(res.data);
+          UI.showToast("Signed in successfully!", "success");
+          setTimeout(() => {
+            Auth.redirectToHome(res.data.role);
+          }, 400);
+        } else {
+          UI.showToast(res.message || "Login failed", "error");
+        }
+      } catch (err) {
+        UI.showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Sign In";
+      }
+    });
+  </script>
+</body>
+</html>

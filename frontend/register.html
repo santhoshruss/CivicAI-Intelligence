@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Citizen Registration – CivicAI</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+    .auth-card {
+      background: #ffffff;
+      border-radius: var(--radius);
+      padding: 2.25rem;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: var(--shadow-lg);
+    }
+  </style>
+</head>
+<body class="auth-page">
+
+  <div class="auth-card">
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+      <div style="width: 44px; height: 44px; background: #0284c7; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.5rem; margin-bottom: 0.5rem;">C</div>
+      <h2 style="font-size: 1.5rem; font-weight: 700;">Create Citizen Account</h2>
+      <p style="color: var(--text-secondary); font-size: 0.85rem;">Report infrastructure damage and track community repairs</p>
+    </div>
+
+    <form id="register-form">
+      <div class="form-group">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" class="form-control" required placeholder="Jane Doe" minlength="2">
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" class="form-control" required placeholder="jane@example.org">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password (min 6 characters)</label>
+        <input type="password" id="password" class="form-control" required placeholder="••••••••" minlength="6">
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">Register Account</button>
+    </form>
+
+    <div style="text-align: center; margin-top: 1.25rem; font-size: 0.85rem; color: var(--text-secondary);">
+      Already have an account? <a href="login.html" style="color: var(--primary); font-weight: 600; text-decoration: none;">Sign In</a>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    document.getElementById("register-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("submit-btn");
+      btn.disabled = true;
+      btn.textContent = "Creating Account...";
+
+      const name = document.getElementById("name").value;
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      try {
+        const res = await Api.post("/auth/register", { name, email, password });
+        if (res.success && res.data) {
+          Auth.setSession(res.data);
+          UI.showToast("Account created successfully! Welcome.", "success");
+          setTimeout(() => {
+            window.location.href = "citizen-dashboard.html";
+          }, 500);
+        } else {
+          UI.showToast(res.message || "Registration failed", "error");
+        }
+      } catch (err) {
+        UI.showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Register Account";
+      }
+    });
+  </script>
+</body>
+</html>

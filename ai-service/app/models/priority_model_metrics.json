@@ -1,0 +1,76 @@
+{
+  "model_version": "CivicAI-PriorityClassifier-RF-v1.0",
+  "accuracy": 0.975,
+  "f1_weighted": 0.9747,
+  "confusion_matrix": [
+    [
+      3,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      34,
+      0,
+      0
+    ],
+    [
+      0,
+      2,
+      43,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      37
+    ]
+  ],
+  "classification_report": {
+    "LOW": {
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1-score": 0.8571428571428571,
+      "support": 4.0
+    },
+    "MEDIUM": {
+      "precision": 0.918918918918919,
+      "recall": 1.0,
+      "f1-score": 0.9577464788732394,
+      "support": 34.0
+    },
+    "HIGH": {
+      "precision": 1.0,
+      "recall": 0.9555555555555556,
+      "f1-score": 0.9772727272727273,
+      "support": 45.0
+    },
+    "CRITICAL": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 37.0
+    },
+    "accuracy": 0.975,
+    "macro avg": {
+      "precision": 0.9797297297297297,
+      "recall": 0.9263888888888889,
+      "f1-score": 0.9480405158222059,
+      "support": 120.0
+    },
+    "weighted avg": {
+      "precision": 0.977027027027027,
+      "recall": 0.975,
+      "f1-score": 0.9747435369794525,
+      "support": 120.0
+    }
+  },
+  "classes": [
+    "LOW",
+    "MEDIUM",
+    "HIGH",
+    "CRITICAL"
+  ]
+}

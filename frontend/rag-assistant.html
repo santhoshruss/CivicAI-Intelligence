@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG Maintenance Assistant – CivicAI</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .rag-grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 1.5rem;
+    }
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 600px;
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .chat-messages {
+      flex-grow: 1;
+      padding: 1.25rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      background: #f8fafc;
+    }
+    .chat-bubble {
+      max-width: 85%;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .chat-bubble-user {
+      align-self: flex-end;
+      background: var(--primary);
+      color: white;
+      border-bottom-right-radius: 2px;
+    }
+    .chat-bubble-ai {
+      align-self: flex-start;
+      background: white;
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-bottom-left-radius: 2px;
+      box-shadow: var(--shadow-sm);
+    }
+    .source-box {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      background: #f1f5f9;
+      border-left: 3px solid var(--primary);
+      border-radius: 0 4px 4px 0;
+      font-size: 0.8rem;
+    }
+    .chat-input-area {
+      padding: 1rem;
+      background: white;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      gap: 0.5rem;
+    }
+    .chip {
+      display: inline-block;
+      padding: 0.3rem 0.6rem;
+      background: #e2e8f0;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      margin: 0.2rem;
+    }
+    .chip:hover {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <h1 class="page-title">RAG Maintenance Knowledge Assistant</h1>
+        <div class="topbar-actions">
+          <span class="badge badge-analyzed">FAISS Vector Index: Active</span>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <div class="rag-grid">
+          <!-- Left Column: Ingested Documents & PDF Upload -->
+          <div>
+            <!-- PDF Upload Box -->
+            <div class="card" style="margin-bottom: 1.25rem;">
+              <div class="card-header">
+                <h3>Ingest Maintenance SOP (PDF)</h3>
+              </div>
+              <form id="upload-doc-form">
+                <div class="form-group">
+                  <label for="doc-title">Document Title</label>
+                  <input type="text" id="doc-title" class="form-control" placeholder="e.g., Water Pipe Repair SOP">
+                </div>
+                <div class="form-group">
+                  <label for="doc-category">Target Category</label>
+                  <select id="doc-category" class="form-control">
+                    <option value="ROADS_INFRA">Roads & Pothole Repair</option>
+                    <option value="ELEC_LIGHT">Electrical & Lighting</option>
+                    <option value="WATER_DRAIN">Water Supply & Drainage</option>
+                    <option value="WASTE_MGMT">Solid Waste Management</option>
+                    <option value="GENERAL">General Municipal Code</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="doc-file">Select PDF File *</label>
+                  <input type="file" id="doc-file" class="form-control" accept="application/pdf" required>
+                </div>
+                <button type="submit" id="btn-upload" class="btn btn-primary btn-sm" style="width: 100%;">Upload & Index Vectors</button>
+              </form>
+            </div>
+
+            <!-- Ingested Documents List -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Indexed Manuals</h3>
+                <button class="btn btn-secondary btn-sm" onclick="loadDocuments()">🔄</button>
+              </div>
+              <div id="docs-list" style="font-size: 0.85rem; max-height: 250px; overflow-y: auto;">
+                <p style="color: var(--text-muted);">Loading indexed manuals...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Interactive Chat Interface -->
+          <div>
+            <div class="chat-container">
+              <div style="padding: 0.75rem 1.25rem; background: #ffffff; border-bottom: 1px solid var(--border-color);">
+                <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.3rem;">MULTILINGUAL RETRIEVAL EXAMPLES (English, தமிழ், Tanglish):</div>
+                <span class="chip" onclick="askQuestion('What is the mandatory safety perimeter for exposed electrical wiring?')">⚡ Electrical wire safety perimeter (EN)</span>
+                <span class="chip" onclick="askQuestion('What are the compaction and tack coat specifications for pothole repair?')">🛣️ Pothole asphalt tack coat (EN)</span>
+                <span class="chip" onclick="askQuestion('ரோடு பள்ளம் மற்றும் தார் அமைக்கும் முறை என்ன?')">🛣️ பள்ளம் சீரமைப்பு (Tamil)</span>
+                <span class="chip" onclick="askQuestion('Enga area la water pipe rupture aana main valve shutoff protocol enna?')">💧 Water valve shutoff (Tanglish)</span>
+              </div>
+
+              <div id="chat-messages" class="chat-messages">
+                <div class="chat-bubble chat-bubble-ai">
+                  <strong>Municipal Maintenance Assistant</strong>
+                  <p style="margin-top: 0.25rem;">
+                    Hello Officer. I am grounded in your municipal Standard Operating Procedures (SOPs). Ask any technical question regarding repair protocols, safety perimeters, compaction requirements, or emergency valve shutoffs.
+                  </p>
+                </div>
+              </div>
+
+              <div class="chat-input-area">
+                <input type="text" id="chat-input" class="form-control" placeholder="Ask a question about municipal maintenance guidelines..." onkeydown="if(event.key==='Enter') sendQuery()">
+                <button class="btn btn-primary" onclick="sendQuery()">Ask RAG</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    Auth.requireAuth(["MUNICIPAL_OFFICER", "FIELD_INSPECTOR", "ADMIN"]);
+    UI.renderSidebar("rag-assistant");
+
+    async function loadDocuments() {
+      try {
+        const res = await Api.get("/knowledge/documents");
+        const cont = document.getElementById("docs-list");
+        if (res.success && res.data && res.data.length > 0) {
+          cont.innerHTML = res.data.map(doc => `
+            <div style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
+              <div style="font-weight: 600; color: var(--text-primary);">📄 ${UI.escapeHtml(doc.title)}</div>
+              <div style="font-size: 0.75rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+                <span>Category: ${UI.escapeHtml(doc.category)}</span>
+                <span class="badge badge-resolved">${doc.chunkCount} Chunks</span>
+              </div>
+            </div>
+          `).join("");
+        } else {
+          cont.innerHTML = `<p style="color: var(--text-muted);">No documents indexed yet.</p>`;
+        }
+      } catch (err) {
+        console.warn("Docs load error:", err);
+      }
+    }
+
+    document.getElementById("upload-doc-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("btn-upload");
+      btn.disabled = true;
+      btn.textContent = "Extracting & Embedding...";
+
+      const title = document.getElementById("doc-title").value;
+      const category = document.getElementById("doc-category").value;
+      const fileInput = document.getElementById("doc-file");
+
+      const fd = new FormData();
+      fd.append("file", fileInput.files[0]);
+      if (title) fd.append("title", title);
+      if (category) fd.append("category", category);
+
+      try {
+        const res = await Api.upload("/knowledge/upload", fd);
+        if (res.success) {
+          UI.showToast("Document indexed in FAISS vector store successfully!", "success");
+          fileInput.value = "";
+          document.getElementById("doc-title").value = "";
+          loadDocuments();
+        } else {
+          UI.showToast(res.message, "error");
+        }
+      } catch (err) {
+        UI.showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Upload & Index Vectors";
+      }
+    });
+
+    function askQuestion(q) {
+      document.getElementById("chat-input").value = q;
+      sendQuery();
+    }
+
+    async function sendQuery() {
+      const input = document.getElementById("chat-input");
+      const query = input.value.trim();
+      if (!query) return;
+
+      input.value = "";
+      const chatContainer = document.getElementById("chat-messages");
+
+      // User Bubble
+      const userBubble = document.createElement("div");
+      userBubble.className = "chat-bubble chat-bubble-user";
+      userBubble.textContent = query;
+      chatContainer.appendChild(userBubble);
+
+      // AI Loading Bubble
+      const aiBubble = document.createElement("div");
+      aiBubble.className = "chat-bubble chat-bubble-ai";
+      aiBubble.innerHTML = `<em>Retrieving semantic vectors from FAISS index...</em>`;
+      chatContainer.appendChild(aiBubble);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      try {
+        const res = await Api.post("/knowledge/query", { query });
+        if (res.success && res.data) {
+          const ans = res.data;
+          let sourcesHtml = "";
+          if (ans.sources && ans.sources.length > 0) {
+            sourcesHtml = ans.sources.map(s => `
+              <div class="source-box">
+                <div style="font-weight: 600;">📑 ${UI.escapeHtml(s.documentName)} (Page ${s.pageNumber}) — Relevance: ${(s.score * 100).toFixed(0)}%</div>
+                <div style="color: var(--text-secondary); font-style: italic; margin-top: 0.2rem;">"${UI.escapeHtml(s.excerpt)}"</div>
+              </div>
+            `).join("");
+          }
+
+          aiBubble.innerHTML = `
+            <div style="white-space: pre-line;">${UI.escapeHtml(ans.answer)}</div>
+            ${sourcesHtml ? `<div style="margin-top: 0.75rem; font-weight: 700; font-size: 0.8rem; color: var(--text-secondary);">GROUNDED SOURCE CITATIONS:</div>${sourcesHtml}` : ''}
+          `;
+        } else {
+          aiBubble.textContent = "Could not retrieve relevant municipal guideline.";
+        }
+      } catch (err) {
+        aiBubble.textContent = "Error during retrieval: " + err.message;
+      }
+
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    loadDocuments();
+  </script>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CivicAI – AI Public Infrastructure Damage Intelligence</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    /* Landing Page Specific Styling */
+    .landing-nav {
+      background: #ffffff;
+      padding: 1rem 3rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .landing-hero {
+      padding: 5rem 2rem 4rem;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #ffffff;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-block;
+      padding: 0.4rem 1rem;
+      background: rgba(2, 132, 199, 0.2);
+      border: 1px solid #0284c7;
+      color: #38bdf8;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+    .hero-title {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+      line-height: 1.15;
+    }
+    .hero-subtitle {
+      font-size: 1.25rem;
+      color: #94a3b8;
+      max-width: 680px;
+      margin: 0 auto 2rem;
+    }
+    .hero-cta {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+    }
+    .landing-section {
+      padding: 4rem 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    .section-subtitle {
+      text-align: center;
+      color: var(--text-secondary);
+      margin-bottom: 3rem;
+    }
+    .feature-card {
+      background: #ffffff;
+      padding: 2rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+    }
+    .feature-icon {
+      font-size: 2.2rem;
+      margin-bottom: 1rem;
+    }
+    .step-box {
+      text-align: center;
+      padding: 1.5rem;
+    }
+    .step-number {
+      width: 44px;
+      height: 44px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin: 0 auto 1rem;
+    }
+    footer {
+      background: #0f172a;
+      color: #94a3b8;
+      text-align: center;
+      padding: 2.5rem;
+      border-top: 1px solid #334155;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="landing-nav">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <div style="width: 38px; height: 38px; background: #0284c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">C</div>
+      <strong style="font-size: 1.25rem; color: #0f172a;">CivicAI</strong>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+      <a href="login.html" class="btn btn-secondary">Sign In</a>
+      <a href="register.html" class="btn btn-primary">Report Damage</a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="landing-hero">
+    <span class="hero-badge">Autonomous Municipal Infrastructure Platform</span>
+    <h1 class="hero-title">Detect. Understand. Prioritize. Resolve.</h1>
+    <p class="hero-subtitle">
+      CivicAI empowers citizens and municipal authorities with computer vision damage triage, geospatial duplicate detection, and agentic work order automation.
+    </p>
+    <div class="hero-cta">
+      <a href="report-incident.html" class="btn btn-primary" style="padding: 0.8rem 2rem; font-size: 1rem;">Report an Issue</a>
+      <a href="login.html" class="btn btn-secondary" style="padding: 0.8rem 2rem; font-size: 1rem; background: transparent; color: white; border-color: #475569;">Officer Portal</a>
+    </div>
+  </section>
+
+  <!-- Problem & Solution Section -->
+  <section class="landing-section">
+    <h2 class="section-title">The Urban Infrastructure Challenge</h2>
+    <p class="section-subtitle">Why traditional civic reporting systems fail modern cities</p>
+
+    <div class="grid-2">
+      <div class="card" style="border-left: 4px solid var(--status-rejected);">
+        <h3 style="margin-bottom: 0.5rem; color: #991b1b;">⚠️ The Problem</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+          Municipal dispatchers receive hundreds of duplicate, unstructured citizen reports daily. Critical electrical hazards and expanding potholes languish in bureaucratic backlogs while minor complaints clutter maintenance queues.
+        </p>
+        <ul style="color: var(--text-secondary); padding-left: 1.25rem; font-size: 0.9rem;">
+          <li>Duplicate submissions waste up to 40% of inspection capacity</li>
+          <li>Lack of objective visual damage severity scoring</li>
+          <li>Disconnected maintenance guidelines and slow work order dispatch</li>
+        </ul>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--status-resolved);">
+        <h3 style="margin-bottom: 0.5rem; color: #065f46;">✨ The CivicAI Solution</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+          An integrated intelligence system combining automated image classification, geospatial proximity duplicate clustering, and tool-calling agentic workflows that prepare actionable work orders.
+        </p>
+        <ul style="color: var(--text-secondary); padding-left: 1.25rem; font-size: 0.9rem;">
+          <li>Automated visual damage triage across 5 critical civic categories</li>
+          <li>FAISS-powered RAG assistant grounding actions in official city SOPs</li>
+          <li>Human-in-the-loop authorization ensuring complete municipal control</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section style="background: #ffffff; padding: 4rem 2rem; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+    <div style="max-width: 1100px; margin: 0 auto;">
+      <h2 class="section-title">How CivicAI Operates</h2>
+      <p class="section-subtitle">End-to-end municipal triage and resolution workflow</p>
+
+      <div class="grid-4">
+        <div class="step-box">
+          <div class="step-number">1</div>
+          <h4 style="margin-bottom: 0.5rem;">Citizen Reports</h4>
+          <p style="font-size: 0.85rem; color: var(--text-secondary);">Citizen snaps photo and captures exact GPS coordinates of road or utility damage.</p>
+        </div>
+        <div class="step-box">
+          <div class="step-number">2</div>
+          <h4 style="margin-bottom: 0.5rem;">AI Vision Triage</h4>
+          <p style="font-size: 0.85rem; color: var(--text-secondary);">Computer vision analyzes damage severity and calculates proximity duplicate score.</p>
+        </div>
+        <div class="step-box">
+          <div class="step-number">3</div>
+          <h4 style="margin-bottom: 0.5rem;">Agentic Work Order</h4>
+          <p style="font-size: 0.85rem; color: var(--text-secondary);">AI agent consults RAG maintenance manuals and stages prioritized draft repair orders.</p>
+        </div>
+        <div class="step-box">
+          <div class="step-number">4</div>
+          <h4 style="margin-bottom: 0.5rem;">Officer Verification</h4>
+          <p style="font-size: 0.85rem; color: var(--text-secondary);">Authorized officer approves work order and tracks field repair to resolution.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p><strong>CivicAI</strong> – AI Public Infrastructure Damage Intelligence System</p>
+    <p style="font-size: 0.8rem; margin-top: 0.5rem;">Built with Java Spring Boot, MySQL 8, Python FastAPI, FAISS RAG, and Leaflet Maps.</p>
+  </footer>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script src="assets/js/voice-assistant.js"></script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incident Management – CivicAI</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <h1 class="page-title">Incident Management & Triage</h1>
+        <div class="topbar-actions">
+          <a href="map.html" class="btn btn-secondary btn-sm">🗺️ View Map</a>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <!-- Filter Controls -->
+        <div class="card" style="margin-bottom: 1.25rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) 100px; gap: 0.75rem; align-items: flex-end;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filter-search">Search Reference / Text</label>
+              <input type="text" id="filter-search" class="form-control" placeholder="Search keywords...">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filter-category">Category</label>
+              <select id="filter-category" class="form-control">
+                <option value="">All Categories</option>
+                <option value="POTHOLE">Pothole</option>
+                <option value="ROAD_CRACK">Road Crack</option>
+                <option value="STREETLIGHT_DAMAGE">Streetlight Damage</option>
+                <option value="WATER_LEAKAGE">Water Leakage</option>
+                <option value="GARBAGE_OVERFLOW">Garbage Overflow</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filter-priority">Priority</label>
+              <select id="filter-priority" class="form-control">
+                <option value="">All Priorities</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="filter-status">Status</label>
+              <select id="filter-status" class="form-control">
+                <option value="">All Statuses</option>
+                <option value="REPORTED">Reported</option>
+                <option value="UNDER_REVIEW">Under Review</option>
+                <option value="AI_ANALYZED">AI Analyzed</option>
+                <option value="WORK_ORDER_CREATED">Work Order Created</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="RESOLVED">Resolved</option>
+              </select>
+            </div>
+            <div>
+              <button class="btn btn-primary" style="width: 100%;" onclick="loadIncidents(0)">Filter</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Incidents Table -->
+        <div class="card">
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ref #</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th>Address</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Assigned Dept</th>
+                  <th>Reported Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="incidents-tbody">
+                <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Loading incidents...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div id="page-info" style="font-size: 0.85rem; color: var(--text-secondary);">Showing page 1</div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button id="prev-btn" class="btn btn-secondary btn-sm" onclick="changePage(-1)">Previous</button>
+              <button id="next-btn" class="btn btn-secondary btn-sm" onclick="changePage(1)">Next</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    Auth.requireAuth(["MUNICIPAL_OFFICER", "ADMIN"]);
+    UI.renderSidebar("incidents");
+
+    let currentPage = 0;
+    let totalPages = 1;
+
+    async function loadIncidents(page = 0) {
+      currentPage = page;
+      const search = document.getElementById("filter-search").value;
+      const category = document.getElementById("filter-category").value;
+      const priority = document.getElementById("filter-priority").value;
+      const status = document.getElementById("filter-status").value;
+
+      let query = `?page=${page}&size=10`;
+      if (search) query += `&search=${encodeURIComponent(search)}`;
+      if (category) query += `&category=${encodeURIComponent(category)}`;
+      if (priority) query += `&priority=${encodeURIComponent(priority)}`;
+      if (status) query += `&status=${encodeURIComponent(status)}`;
+
+      try {
+        const res = await Api.get(`/incidents${query}`);
+        if (res.success && res.data) {
+          const pageData = res.data;
+          totalPages = pageData.totalPages || 1;
+          document.getElementById("page-info").textContent = `Page ${pageData.number + 1} of ${totalPages} (${pageData.totalElements} incidents)`;
+
+          document.getElementById("prev-btn").disabled = pageData.first;
+          document.getElementById("next-btn").disabled = pageData.last;
+
+          const tbody = document.getElementById("incidents-tbody");
+          if (!pageData.content || pageData.content.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 2rem;">No matching incidents found.</td></tr>`;
+            return;
+          }
+
+          tbody.innerHTML = pageData.content.map(i => `
+            <tr>
+              <td><strong>${UI.escapeHtml(i.referenceNumber)}</strong></td>
+              <td>${UI.escapeHtml(i.category.replace('_', ' '))}</td>
+              <td>${UI.escapeHtml(i.description.length > 45 ? i.description.substring(0, 45) + '...' : i.description)}</td>
+              <td>${UI.escapeHtml(i.address || (i.latitude + ', ' + i.longitude))}</td>
+              <td>${UI.getPriorityBadge(i.approvedPriority)}</td>
+              <td>${UI.getStatusBadge(i.status)}</td>
+              <td>${UI.escapeHtml(i.assignedDepartmentName || 'Pending Assignment')}</td>
+              <td>${UI.formatDate(i.createdAt)}</td>
+              <td>
+                <a href="incident-details.html?id=${i.id}" class="btn btn-secondary btn-sm">View Case</a>
+              </td>
+            </tr>
+          `).join("");
+        }
+      } catch (err) {
+        UI.showToast("Error loading incidents: " + err.message, "error");
+      }
+    }
+
+    function changePage(delta) {
+      const target = currentPage + delta;
+      if (target >= 0 && target < totalPages) {
+        loadIncidents(target);
+      }
+    }
+
+    loadIncidents(0);
+  </script>
+</body>
+</html>

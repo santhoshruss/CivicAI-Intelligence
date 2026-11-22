@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Citizen Dashboard – CivicAI</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Dynamic Sidebar -->
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <h1 class="page-title">Citizen Dashboard</h1>
+        <div class="topbar-actions">
+          <a href="report-incident.html" class="btn btn-primary btn-sm">+ Report Damage</a>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <!-- Metric Cards -->
+        <div class="grid-4">
+          <div class="card metric-card">
+            <div>
+              <div class="metric-label">My Submissions</div>
+              <div id="stat-total" class="metric-value">0</div>
+            </div>
+            <div class="metric-icon" style="background: #e0f2fe; color: #0284c7;">📝</div>
+          </div>
+          <div class="card metric-card">
+            <div>
+              <div class="metric-label">In Review / Triage</div>
+              <div id="stat-pending" class="metric-value">0</div>
+            </div>
+            <div class="metric-icon" style="background: #fef3c7; color: #d97706;">⏳</div>
+          </div>
+          <div class="card metric-card">
+            <div>
+              <div class="metric-label">Repair In Progress</div>
+              <div id="stat-progress" class="metric-value">0</div>
+            </div>
+            <div class="metric-icon" style="background: #ede9fe; color: #7c3aed;">🛠️</div>
+          </div>
+          <div class="card metric-card">
+            <div>
+              <div class="metric-label">Resolved Issues</div>
+              <div id="stat-resolved" class="metric-value">0</div>
+            </div>
+            <div class="metric-icon" style="background: #d1fae5; color: #059669;">✅</div>
+          </div>
+        </div>
+
+        <!-- Recent Incident Submissions Table -->
+        <div class="card">
+          <div class="card-header">
+            <h3>My Incident Reports</h3>
+            <button class="btn btn-secondary btn-sm" onclick="loadCitizenIncidents()">🔄 Refresh</button>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Reference #</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th>Location</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Reported Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="incidents-table-body">
+                <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Loading your reports...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    Auth.requireAuth(["CITIZEN", "ADMIN"]);
+    UI.renderSidebar("citizen-dashboard");
+
+    async function loadCitizenIncidents() {
+      try {
+        const res = await Api.get("/incidents/my");
+        if (res.success && res.data) {
+          const list = res.data.content || [];
+          
+          let total = list.length;
+          let pending = list.filter(i => ["REPORTED", "UNDER_REVIEW", "AI_ANALYZED"].includes(i.status)).length;
+          let progress = list.filter(i => ["WORK_ORDER_CREATED", "IN_PROGRESS"].includes(i.status)).length;
+          let resolved = list.filter(i => i.status === "RESOLVED").length;
+
+          document.getElementById("stat-total").textContent = total;
+          document.getElementById("stat-pending").textContent = pending;
+          document.getElementById("stat-progress").textContent = progress;
+          document.getElementById("stat-resolved").textContent = resolved;
+
+          const tbody = document.getElementById("incidents-table-body");
+          if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 2rem;">No incidents reported yet. Click <strong>+ Report Damage</strong> above to file your first report.</td></tr>`;
+            return;
+          }
+
+          tbody.innerHTML = list.map(item => `
+            <tr>
+              <td><strong>${UI.escapeHtml(item.referenceNumber)}</strong></td>
+              <td>${UI.escapeHtml(item.category.replace('_', ' '))}</td>
+              <td>${UI.escapeHtml(item.description.length > 50 ? item.description.substring(0, 50) + "..." : item.description)}</td>
+              <td>${UI.escapeHtml(item.address || (item.latitude + ", " + item.longitude))}</td>
+              <td>${UI.getPriorityBadge(item.approvedPriority)}</td>
+              <td>${UI.getStatusBadge(item.status)}</td>
+              <td>${UI.formatDate(item.createdAt)}</td>
+              <td>
+                <a href="incident-details.html?id=${item.id}" class="btn btn-secondary btn-sm">View Details</a>
+              </td>
+            </tr>
+          `).join("");
+        }
+      } catch (err) {
+        UI.showToast("Failed to load incidents: " + err.message, "error");
+      }
+    }
+
+    loadCitizenIncidents();
+    // Auto polling every 15 seconds
+    setInterval(loadCitizenIncidents, 15000);
+  </script>
+</body>
+</html>
